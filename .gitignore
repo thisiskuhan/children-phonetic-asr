@@ -1,0 +1,79 @@
+# ── Data ────────────────────────────────────────────────────────────────────
+data/
+*.flac
+*.wav
+*.mp3
+*.jsonl
+
+# ── Model weights & LM artefacts ───────────────────────────────────────────
+*.pt
+*.pth
+*.bin
+*.safetensors
+*.onnx
+*.ckpt
+*.arpa
+
+# ── Archives ────────────────────────────────────────────────────────────────
+*.zip
+*.tar
+*.tar.gz
+*.gz
+
+# ── Python ──────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+.Python
+.pytest_cache/
+
+# ── Environment / secrets ───────────────────────────────────────────────────
+.env
+
+# ── Virtual environments ─────────────────────────────────────────────────────
+venv/
+env/
+.env/
+.venv/
+
+# ── Jupyter ──────────────────────────────────────────────────────────────────
+.ipynb_checkpoints/
+*.ipynb
+
+# ── Logs & outputs ───────────────────────────────────────────────────────────
+*.log
+logs/
+!study/runs/**/logs/
+!study/runs/**/*.log
+/runs/
+wandb/
+outputs/
+checkpoints/
+sweep/
+
+# ── OS ───────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ── IDE ──────────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ── Submission artefacts (built / downloaded, not source) ───────────────────
+submission/reference/
+submission/src/model/
+submission/src/tokenizer/
+submission/src/lm/
+submission/src/unigrams.json
+submission/best_models/
+
+# ── Study / research notes (compliance – kept local only) ───────────────
+study/*
+!study/NOTICE.txt
+
+# ── Competition runtime (DrivenData scaffold, not our code) ─────────────
+childrens-speech-recognition-runtime/

@@ -1,0 +1,212 @@
+# ---------------------------------------------------------------------------
+# Configuration
+# ---------------------------------------------------------------------------
+
+data: data                        # root data directory
+datasets: [1, 2]                  # dataset keys → {key}_train_phon_transcripts.jsonl + {key}_audio/
+
+# ── Shared ──────────────────────────────────────────────────────────────────
+seed: 1507                        # global reproducibility seed
+num_workers: 8                    # DataLoader worker processes
+max_duration: 16                  # max audio length in seconds
+min_duration: 0.5                 # min audio length in seconds
+
+# ── Text EDA ────────────────────────────────────────────────────────────────
+eda:
+  max_runon_length: 15            # label length above this without spaces = run-on
+  tps_min: 1.0                    # min tokens-per-second threshold
+  tps_max: 25.0                   # max tokens-per-second threshold
+  min_phonemes: 3                 # min phonemes per utterance (below = drop)
+  drill_min_words: 4              # min tokens before checking drill ratio
+  drill_duplicate_ratio: 0.5      # unique/total below this = drill utterance
+
+# ── Audio check ─────────────────────────────────────────────────────────────
+audio_check:
+  check_md5: true                 # verify file MD5 hashes
+  audit_orphan_duration: false    # scan orphan files for duration (slow)
+
+# ── Audio EDA ───────────────────────────────────────────────────────────────
+audio_eda:
+  rms:
+    spread_ratio_threshold: 10.0  # p99/p01 ratio to recommend normalisation
+
+  clipping:
+    sample_threshold: 0.999       # |x| >= this = clipped sample
+    file_percent_threshold: 5.0   # % clipped samples to flag a file
+    corpus_percent_threshold: 1.0 # % flagged files to recommend drop
+
+  speaker:
+    top_k: 5                      # top speakers to report
+    dominance_threshold: 30.0     # % of total hours to trigger weighted sampler
+
+  duration:
+    target_vram_seconds: 120.0    # max audio seconds per batch
+
+  silence:
+    window_sec: 0.5               # leading/trailing window to check
+    ratio_threshold: 0.1          # RMS(window)/RMS(file) below this = silence
+    corpus_percent_threshold: 20.0 # % silent files to recommend VAD
+
+  spectral:
+    subset_fraction: 0.05         # fraction of corpus to sample
+    seed: 1507                    # spectral subset seed
+
+  format:
+    expected_sr: 16000            # expected sample rate
+    expected_channels: 1          # expected channel count
+
+# ── Data split ──────────────────────────────────────────────────────────────
+split:
+  val_ratio: 0.10                 # fraction of speakers → validation
+  test_ratio: 0.0                 # fraction of speakers → test (0 = none)
+  max_retries: 50                 # phoneme-coverage retry limit
+  min_phoneme_count_warn: 5       # warn if any phoneme count below this
+  rare_phoneme_fraction: 3.0e-5   # pin rare-phoneme speakers to train
+
+# ── HF SFT ──────────────────────────────────────────────────────────────────
+hf_sft:
+  # Model
+  model_name: "microsoft/wavlm-base-plus"  # pretrained backbone
+  vocab_size: 53                   # CTC vocabulary size (IPA phonemes)
+  blank_id: 0                     # CTC blank token id
+
+  # Training
+  max_epochs: 25                  # max training epochs
+  physical_batch_size: 32         # per-device batch size
+  gradient_accumulation_steps: 2  # effective batch = 64
+  fp16: false                     # float16 training
+  bf16: true                      # bfloat16 training
+  tf32: true                      # TF32 matmul precision
+
+  # Learning rates
+  head_lr: 3.0e-4                 # CTC head learning rate
+  encoder_lr: 1.0e-4              # encoder learning rate (before LLRD)
+  cnn_lr: 0                       # CNN feature extractor LR (0 = frozen)
+  weight_decay: 0.015             # AdamW weight decay
+  warmup_steps: 1500              # linear warmup steps
+  warmup_head_only_steps: 0       # head-only warmup steps (0 = disabled)
+  max_grad_norm: 1.0              # gradient clipping norm
+
+  # LLRD
+  llrd_decay: 0.85                # layer-wise LR decay factor
+  lr_min_ratio: 0.10              # cosine LR floor as fraction of peak
+
+  # SR-CTC regularization
+  sr_ctc_beta: 0.1                # SR-CTC loss weight (0 = disabled)
+
+  # SpecAugment
+  mask_time_prob: 0.30            # time-mask probability
+  mask_time_length: 10            # time-mask max length
+  mask_feature_prob: 0.12         # freq-mask probability
+  mask_feature_length: 10         # freq-mask max length
+  ds1_mask_time_prob: 0.15        # DS1 time-mask (reduced — already noisy)
+
+  # Dropout
+  attention_dropout: 0.1          # attention dropout
+  hidden_dropout: 0.1             # hidden layer dropout
+  feat_proj_dropout: 0.1          # feature projection dropout
+  final_dropout: 0.1              # final layer dropout
+  layerdrop: 0.1                  # layer drop rate
+
+  # Augmentation toggles
+  speed_augment: true             # enable speed perturbation
+  noise_augment: true             # enable MUSAN noise + RIR
+  noise_augment_datasets: [2]     # datasets for noise aug (DS2 only)
+  pitch_augment: true             # enable pitch shifting
+  pitch_augment_datasets: null    # datasets for pitch aug (null = all)
+
+  # MUSAN noise + RIR (paths relative to data/ssl/)
+  noise_dir: musan/noise          # noise source directory
+  noise_prob: 0.50                # P(noise | eligible sample)
+  rir_dir: rirs_noises            # RIR source directory
+  rir_prob: 0.30                  # P(RIR | eligible sample)
+
+  # Speed perturbation
+  speed_perturb: true             # enable speed perturb
+  speed_perturb_range: [0.8, 1.2] # speed factor range
+
+  # Pitch augmentation
+  pitch_prob: 0.35                # P(pitch shift | eligible sample)
+  pitch_semitones: 3.0            # default ±semitone range
+  pitch_semitones_per_dataset:    # per-dataset asymmetric ranges
+    1: { low: -2.0, high: 6.0 }   # DS1: shift toward child F0
+    2: { low: -2.0, high: 10.0 }  # DS2: wider up-shift (cleaner data)
+
+  # Silence trimming
+  silence_trim: true              # trim leading/trailing silence
+  silence_trim_db: -40.0          # trim threshold in dB
+  silence_trim_abs_floor: 1.0e-4  # absolute amplitude floor
+
+  # DS1 oversampling
+  ds_oversample:
+    1: 3                          # DS1 repeat factor
+
+  # Age-based loss weighting
+  age_loss_weights: null          # per-age loss weights (null = disabled)
+
+  # Checkpointing & early stopping
+  save_top_k: 5                   # keep top-K checkpoints by eval PER
+  early_stopping_patience: 5      # epochs without improvement to stop
+  checkpoint_averaging: true      # average top-N checkpoints after training
+  checkpoint_avg_top_n: 5         # number of checkpoints to average
+
+  # Duration
+  min_duration_sec: 0.5           # min audio duration in seconds
+
+  # DataLoader
+  prefetch_factor: 4              # batches to prefetch per worker
+  pin_memory: true                # pin tensors to CUDA memory
+  persistent_workers: true        # keep workers alive between epochs
+
+  # Compilation
+  torch_compile: false            # torch.compile model
+  torch_compile_mode: default     # compile mode
+  torch_compile_backend: inductor # compile backend
+
+  # CNN
+  unfreeze_cnn: false             # unfreeze CNN feature extractor
+
+  # Resume
+  resume_from: null               # checkpoint path (null = fresh start)
+
+  # Email notifications (secrets in .env)
+  email:
+    enabled: true                 # send email on eval / failure
+    run_name: "run24"             # run name in email subject
+
+  # Experiment tracking
+  wandb:
+    enabled: false                # enable W&B logging
+    project: "309-hf-sft"         # W&B project name
+    entity: "children-309"        # W&B entity/team
+    run_name: "run24-ds1-specaug-reduction"  # W&B run name
+    tags: ["wavlm-base-plus", "ctc", "phoneme", "hf-trainer", "ds1-oversample",
+           "speed-perturb", "fresh-start", "sr-ctc", "r15-reg", "pitch-all-ds",
+           "asymmetric-pitch", "abs-floor", "ds1-specaug-reduction"]
+
+# ── NST (Noisy Student Training) ────────────────────────────────────────────
+nst:
+  # Teacher model
+  teacher_checkpoint: "auto"      # "auto" = best from --sft, or explicit path
+  tokenizer_dir: "data/models/tokenizer"  # Wav2Vec2CTCTokenizer directory
+
+  # Inference
+  batch_size: 128                 # inference batch size
+  beam_width: 50                  # beam search width
+  length_alpha: 0.0               # length normalisation weight
+  blank_bias: 0.0                 # blank logit bias
+  temperature: 1.0                # softmax temperature
+  amp_dtype: "bfloat16"           # AMP dtype for inference
+  beam_workers: 8                 # parallel beam decode threads
+
+  # Confidence filtering
+  max_beam_greedy_cer: 0.08       # max beam-vs-greedy CER to keep
+  min_pred_chars: 2               # min predicted characters
+  min_phonemes: 4                 # min phonemes to keep
+  min_norm_score: -0.8            # min normalised confidence score
+  pseudo_keep_fraction: 0.15      # fraction of pseudo-labels to keep
+
+  # Output
+  orphans_jsonl: "data/processed/2_orphans.jsonl"          # orphan audio manifest
+  output_raw: "data/nst/pseudo_labels_raw.jsonl"           # raw pseudo-labels
+  output_filtered: "data/processed/pseudo_labelled.jsonl"  # filtered SFT-ready output

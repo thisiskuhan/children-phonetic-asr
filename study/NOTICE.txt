@@ -1,0 +1,4 @@
+The contents of this directory (research notes, run logs, dataset audits, and
+sweep results) have been excluded from version control for compliance reasons.
+
+They are retained locally and are not distributed with this repository.

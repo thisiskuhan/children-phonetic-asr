@@ -1,0 +1,45 @@
+# ===========================================================================
+#  309 — Children's phoneme-level ASR
+#
+#  Target : Cloud GPU (RunPod, Lambda, Vast.ai)
+#  Python : >=3.10, <3.13
+#
+#  Install order:
+#    1. pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu124
+#       (CPU: …/whl/cpu)
+#    2. pip install torchcodec>=0.10          # optional torchaudio backend
+#    3. pip install -r requirements.txt
+# ===========================================================================
+
+# Core ML
+transformers[torch]>=4.40,<5
+numpy>=1.24
+
+# Audio I/O  (torch/torchaudio/torchcodec: see install steps above)
+soundfile>=0.12
+
+# Config / env
+pyyaml>=6.0
+python-dotenv>=1.0
+
+# Evaluation
+jiwer>=3.0
+
+# Data / IO
+orjson>=3.10
+tqdm>=4.66
+
+# Experiment tracking
+wandb>=0.16
+
+# System monitoring
+psutil>=5.9
+
+# Plotting (EDA)
+matplotlib>=3.8
+
+# HuggingFace fast downloads (silences "hf_transfer not installed" warning)
+hf_transfer>=0.1.4
+
+# Google Drive downloads (provision_runpod.sh)
+gdown>=5.0
